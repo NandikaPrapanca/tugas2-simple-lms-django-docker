@@ -78,3 +78,62 @@ Jika halaman ini muncul, berarti:
 - Docker container berjalan dengan baik
 - Django berhasil dijalankan
 - Koneksi ke PostgreSQL berhasil
+
+---
+
+## 📊 Data Models
+
+Project ini mengimplementasikan beberapa model utama:
+
+- **User**
+  - Role: admin, instructor, student
+
+- **Category**
+  - Mendukung hierarchical (self-referencing)
+
+- **Course**
+  - Relasi ke instructor (User)
+  - Relasi ke category
+
+- **Lesson**
+  - Memiliki urutan (ordering)
+
+- **Enrollment**
+  - Relasi student ke course
+  - Unique constraint (tidak bisa enroll course yang sama dua kali)
+
+- **Progress**
+  - Tracking penyelesaian lesson oleh student
+
+---
+
+## ⚡ Query Optimization
+
+Untuk meningkatkan performa query, digunakan:
+
+### 🔴 Sebelum (N+1 Problem)
+Query count: 3
+
+### 🟢 Setelah Optimasi
+Query count: 1
+
+### Teknik yang digunakan:
+- `select_related()` → untuk relasi ForeignKey
+- `prefetch_related()` → untuk relasi banyak data
+
+Optimasi ini mengurangi jumlah query secara signifikan dan meningkatkan performa aplikasi.
+
+---
+
+## 🛠️ Django Admin Features
+
+- List display yang informatif
+- Search dan filter
+- Inline Lesson pada Course
+- Manajemen data User, Course, Enrollment, dan Progress
+
+---
+
+## 👨‍💻 Author
+
+Nandika Rizki Prapanca
