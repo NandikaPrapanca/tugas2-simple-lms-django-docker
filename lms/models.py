@@ -39,22 +39,18 @@ class CourseQuerySet(models.QuerySet):
 
 
 class Course(models.Model):
-    title = models.CharField(max_length=255)
-    instructor = models.ForeignKey(
+    name = models.CharField(max_length=255)
+    description = models.TextField(default='-')
+    price = models.IntegerField(default=10000)
+
+    teacher = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='courses'
     )
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.CASCADE,
-        related_name='courses'
-    )
 
-    objects = CourseQuerySet.as_manager()
-
-    def __str__(self):
-        return self.title
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 # =========================
