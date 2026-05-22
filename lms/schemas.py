@@ -1,7 +1,8 @@
 from ninja import Schema
 from datetime import datetime
-from typing import Optional
 
+
+# ================= USER =================
 
 class UserOut(Schema):
     id: int
@@ -11,10 +12,20 @@ class UserOut(Schema):
     email: str
 
 
+class RegisterSchema(Schema):
+    username: str
+    password: str
+    email: str
+    first_name: str
+    last_name: str
+
+
+# ================= COURSE =================
+
 class CourseIn(Schema):
     name: str
-    description: str = "-"
-    price: int = 10000
+    description: str
+    price: int
 
 
 class CourseOut(Schema):
@@ -25,15 +36,3 @@ class CourseOut(Schema):
     teacher: UserOut
     created_at: datetime
     updated_at: datetime
-
-
-class CourseContentIn(Schema):
-    name: str
-    course_id: int
-
-
-class CourseContentOut(Schema):
-    id: int
-    title: str
-    order: int
-    course_id: int
