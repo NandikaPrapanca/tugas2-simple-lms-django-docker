@@ -1,57 +1,254 @@
 from ninja import NinjaAPI
-from lms.models import Course
-from lms.schemas import CourseIn, CourseOut
-from typing import List
 from ninja.errors import HttpError
-from django.contrib.auth import get_user_model
+from lms.models import User
+from typing import List
 
-User = get_user_model()
+from lms.models import Course, Lesson
 
-api = NinjaAPI()
+from lms.schemas import (
+    CourseIn,
+    CourseOut,
+    CourseContentIn,
+    CourseContentOut,
+)
 
-@api.get("hello/")
-def hello(request):
-    return {"message": "API jalan 🚀"}
+from lms.helpers import get_object_or_404
 
-@api.get("courses/", response=List[CourseOut], tags=["Courses"])
-def list_courses(request):
-    return Course.objects.select_related("teacher").all()
 
-@api.get("courses/{id}", response=CourseOut, tags=["Courses"])
+api = NinjaAPI(
+    title="Simple LMS API",
+    version="1.0.0",
+    description="REST API Simple LMS menggunakan Django Ninja"
+)
+
+# =================================================
+# COURSE
+# =================================================
+
+@api.get(
+    "/courses/",
+    response=List[CourseOut],
+    tags=["Courses"]
+)
+def list_courses(
+    request,
+    search: str = None,
+):
+    """
+    Mengambil daftar semua course.
+    """
+
+    qs = Course.objects.select_related(
+        "teacher"
+    ).all()
+
+    if search:
+        qs = qs.filter(name__icontains=search)
+
+    return qs
+
+
+@api.get(
+    "/courses/{id}",
+    response=CourseOut,
+    tags=["Courses"]
+)
 def detail_course(request, id: int):
-    try:
-        return Course.objects.select_related("teacher").get(pk=id)
-    except Course.DoesNotExist:
-        raise HttpError(404, "Course tidak ditemukan")
-    
-@api.post("courses/", response=CourseOut, tags=["Courses"])
+    """
+    Mengambil detail course.
+    """
+
+    return get_object_or_404(
+        Course,
+        pk=id
+    )
+
+
+@api.post(
+    "/courses/",
+    response={201: CourseOut},
+    tags=["Courses"]
+)
 def create_course(request, data: CourseIn):
+    """
+    Membuat course baru.
+    """
+
+    if data.price < 0:
+        raise HttpError(
+            400,
+            "Harga tidak boleh negatif"
+        )
+
     teacher = User.objects.first()
 
     if not teacher:
-        raise HttpError(400, "Belum ada user")
+        raise HttpError(
+            400,
+            "Teacher tidak ditemukan"
+        )
 
-    return Course.objects.create(**data.dict(), teacher=teacher)
+    course = Course.objects.create(
+        **data.dict(),
+        teacher=teacher
+    )
 
-@api.put("courses/{id}", response=CourseOut, tags=["Courses"])
+    return 201, course
+
+
+@api.put(
+    "/courses/{id}",
+    response=CourseOut,
+    tags=["Courses"]
+)
 def update_course(request, id: int, data: CourseIn):
-    try:
-        course = Course.objects.get(pk=id)
-    except Course.DoesNotExist:
-        raise HttpError(404, "Course tidak ditemukan")
+    """
+    Mengupdate course.
+    """
+
+    course = get_object_or_404(
+        Course,
+        pk=id
+    )
 
     for attr, value in data.dict().items():
         setattr(course, attr, value)
 
     course.save()
+
     return course
 
-@api.delete("courses/{id}", tags=["Courses"])
+
+@api.delete(
+    "/courses/{id}",
+    response={204: None},
+    tags=["Courses"]
+)
 def delete_course(request, id: int):
-    try:
-        course = Course.objects.get(pk=id)
-    except Course.DoesNotExist:
-        raise HttpError(404, "Course tidak ditemukan")
+    """
+    Menghapus course.
+    """
+
+    course = get_object_or_404(
+        Course,
+        pk=id
+    )
 
     course.delete()
-    return {"success": True}
+
+    return 204, None
+
+
+# =================================================
+# CONTENT / LESSON
+# =================================================
+
+@api.get(
+    "/contents/",
+    response=List[CourseContentOut],
+    tags=["Contents"]
+)
+def list_contents(
+    request,
+    course_id: int = None,
+):
+    """
+    Mengambil semua content.
+    """
+
+    qs = Lesson.objects.select_related(
+        "course"
+    ).all()
+
+    if course_id:
+        qs = qs.filter(course_id=course_id)
+
+    return qs
+
+
+@api.get(
+    "/contents/{id}",
+    response=CourseContentOut,
+    tags=["Contents"]
+)
+def detail_content(request, id: int):
+    """
+    Mengambil detail content.
+    """
+
+    return get_object_or_404(
+        Lesson,
+        pk=id
+    )
+
+
+@api.post(
+    "/contents/",
+    response={201: CourseContentOut},
+    tags=["Contents"]
+)
+def create_content(request, data: CourseContentIn):
+    """
+    Membuat content baru.
+    """
+
+    course = get_object_or_404(
+        Course,
+        pk=data.course_id
+    )
+
+    content = Lesson.objects.create(
+        title=data.name,
+        course=course,
+        order=1,
+    )
+
+    return 201, content
+
+
+@api.put(
+    "/contents/{id}",
+    response=CourseContentOut,
+    tags=["Contents"]
+)
+def update_content(request, id: int, data: CourseContentIn):
+    """
+    Mengupdate content.
+    """
+
+    content = get_object_or_404(
+        Lesson,
+        pk=id
+    )
+
+    course = get_object_or_404(
+        Course,
+        pk=data.course_id
+    )
+
+    content.title = data.name
+    content.course = course
+
+    content.save()
+
+    return content
+
+
+@api.delete(
+    "/contents/{id}",
+    response={204: None},
+    tags=["Contents"]
+)
+def delete_content(request, id: int):
+    """
+    Menghapus content.
+    """
+
+    content = get_object_or_404(
+        Lesson,
+        pk=id
+    )
+
+    content.delete()
+
+    return 204, None
