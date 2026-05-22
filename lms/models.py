@@ -43,6 +43,12 @@ class Course(models.Model):
     description = models.TextField(default='-')
     price = models.IntegerField(default=10000)
 
+    image = models.ImageField(
+        upload_to='courses/',
+        null=True,
+        blank=True
+    )
+
     teacher = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -51,7 +57,6 @@ class Course(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
 
 # =========================
 # LESSON
@@ -62,12 +67,19 @@ class Lesson(models.Model):
         on_delete=models.CASCADE,
         related_name='lessons'
     )
+
     title = models.CharField(max_length=255)
+
     order = models.IntegerField()
+
+    file_attachment = models.FileField(
+        upload_to='attachments/',
+        null=True,
+        blank=True
+    )
 
     class Meta:
         ordering = ['order']
-
 
 # =========================
 # ENROLLMENT + OPTIMIZATION
