@@ -2,6 +2,7 @@ from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja_simple_jwt.auth.views.api import mobile_auth_router
 from ninja_simple_jwt.auth.ninja_auth import HttpJwtAuth
+from django.core.cache import cache
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -105,6 +106,13 @@ def list_courses(
     ordering: str = "-created_at",
 ):
 
+    cache_key = "courses_list"
+
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        return cached_data
+
     allowed_fields = [
         "name",
         "-name",
@@ -123,7 +131,11 @@ def list_courses(
 
     qs = qs.order_by(ordering)
 
-    return qs
+    data = list(qs)
+
+    cache.set(cache_key, data, timeout=300)
+
+    return data
 
 
 @api.get(
@@ -134,10 +146,21 @@ def list_courses(
 )
 def detail_course(request, id: int):
 
-    return get_object_or_404(
+    cache_key = f"course_detail:{id}"
+
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        return cached_data
+
+    course = get_object_or_404(
         Course,
         pk=id,
     )
+
+    cache.set(cache_key, course, timeout=300)
+
+    return course
 
 
 @api.post(
@@ -159,6 +182,8 @@ def create_course(request, data: CourseIn):
         price=data.price,
         teacher=user,
     )
+
+    cache.delete("courses_list")
 
     return 201, course
 
@@ -184,6 +209,9 @@ def update_course(request, id: int, data: CourseIn):
 
     course.save()
 
+    cache.delete("courses_list")
+    cache.delete(f"course_detail:{id}")
+
     return course
 
 
@@ -207,6 +235,9 @@ def patch_course(request, id: int, data: CourseUpdate):
         setattr(course, attr, value)
 
     course.save()
+
+    cache.delete("courses_list")
+    cache.delete(f"course_detail:{id}")
 
     return {
         "message": "Course berhasil diupdate"
@@ -270,5 +301,8 @@ def delete_course(request, id: int):
         raise HttpError(403, "Anda tidak memiliki izin")
 
     course.delete()
+
+    cache.delete("courses_list")
+    cache.delete(f"course_detail:{id}")
 
     return 204, None

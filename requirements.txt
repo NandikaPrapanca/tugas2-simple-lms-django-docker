@@ -4,3 +4,5 @@ python-dotenv
 django-ninja==1.1
 django-ninja-simple-jwt
 Pillow==10.2.0
+redis
+django-redis
