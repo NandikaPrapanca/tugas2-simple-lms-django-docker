@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'ninja_simple_jwt',
     'lms',
+    "analytics",
 ]
 
 AUTH_USER_MODEL = 'lms.User'
@@ -159,3 +160,10 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 SESSION_COOKIE_AGE = 86400
 SESSION_SAVE_EVERY_REQUEST = False
+
+MONGO_URI = os.getenv(
+    "MONGO_URI",
+    "mongodb://admin:password123@mongodb:27017/"
+)
+
+MONGO_DB_NAME = "lms_analytics"

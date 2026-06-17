@@ -3,9 +3,9 @@ from ninja.errors import HttpError
 from ninja_simple_jwt.auth.views.api import mobile_auth_router
 from ninja_simple_jwt.auth.ninja_auth import HttpJwtAuth
 from django.core.cache import cache
-
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from analytics.logger import log_activity
 
 from typing import List, Optional
 
@@ -182,6 +182,14 @@ def create_course(request, data: CourseIn):
         price=data.price,
         teacher=user,
     )
+    log_activity(
+    user,
+    "CREATE_COURSE",
+    {
+        "course_id": course.id,
+        "course_name": course.name
+    }
+)
 
     cache.delete("courses_list")
 
@@ -208,7 +216,14 @@ def update_course(request, id: int, data: CourseIn):
     course.price = data.price
 
     course.save()
-
+    log_activity(
+    user,
+    "UPDATE_COURSE",
+    {
+        "course_id": course.id,
+        "course_name": course.name
+    }
+)
     cache.delete("courses_list")
     cache.delete(f"course_detail:{id}")
 
@@ -299,7 +314,14 @@ def delete_course(request, id: int):
 
     if course.teacher != user and not user.is_superuser:
         raise HttpError(403, "Anda tidak memiliki izin")
-
+    log_activity(
+    user,
+    "DELETE_COURSE",
+    {
+        "course_id": course.id,
+        "course_name": course.name
+    }
+)
     course.delete()
 
     cache.delete("courses_list")
