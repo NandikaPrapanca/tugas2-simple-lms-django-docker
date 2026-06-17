@@ -6,6 +6,17 @@ Simple LMS adalah aplikasi Learning Management System (LMS) sederhana yang diban
 
 ## Features
 
+- JWT Authentication
+- CRUD Course
+- Course Filtering & Pagination
+- Course Image Upload
+- Redis Cache
+- MongoDB Activity Logging
+- RabbitMQ Message Broker
+- Celery Async Task Processing
+- Asynchronous Course Report Generation
+- Flower Monitoring
+
 ### Authentication & Authorization
 
 * User Registration
@@ -61,39 +72,36 @@ Simple LMS adalah aplikasi Learning Management System (LMS) sederhana yang diban
 | PostgreSQL 15 | Relational Database     |
 | Redis 7       | Cache & Session Storage |
 | MongoDB 7     | Activity Logging        |
+| RabbitMQ      | Message Broker          |
+| Celery        | Async Task Queue        |
+| Flower        | Celery Monitoring       |
 | Docker        | Containerization        |
 | JWT           | Authentication          |
 
 ---
-
 # Project Structure
 
 ```text
+analytics/  -> MongoDB logging & Celery async tasks
+config/     -> Django settings, API routes, Celery configuration
+lms/        -> Core LMS application
+media/      -> Uploaded course images
+screenshot/ -> Documentation screenshots
+```
+
+```text
 simple-lms/
-│
 ├── analytics/
-│   ├── mongo.py
-│   └── services.py
-│
-├── lms/
-│   ├── models.py
-│   ├── schemas.py
-│   ├── admin.py
-│   └── helpers.py
-│
 ├── config/
-│   ├── settings.py
-│   ├── urls.py
-│   └── apiv1.py
-│
+├── lms/
 ├── media/
+├── screenshot/
 ├── Dockerfile
 ├── docker-compose.yml
+├── manage.py
 ├── requirements.txt
 └── README.md
 ```
-
----
 
 # Installation
 
@@ -143,6 +151,11 @@ Admin Panel:
 ```text
 http://localhost:8000/admin
 ```
+
+Flower Monitoring:
+
+http://localhost:5555
+
 
 ---
 
@@ -253,6 +266,122 @@ POSTGRES_PORT=5432
 
 ---
 
+## MongoDB Activity Logging
+
+Aplikasi menggunakan MongoDB untuk menyimpan aktivitas pengguna.
+
+Aktivitas yang dicatat:
+
+- CREATE_COURSE
+- UPDATE_COURSE
+- DELETE_COURSE
+
+Data disimpan pada collection:
+
+analytics_logs
+
+Contoh data:
+
+{
+  "user_id": 2,
+  "username": "nandika",
+  "action": "CREATE_COURSE",
+  "metadata": {
+    "course_id": 4,
+    "course_name": "IPSSS"
+  },
+  "created_at": "2026-06-17T11:20:00Z"
+}
+
+## Async Task Processing
+
+Project menggunakan:
+
+- RabbitMQ sebagai Message Broker
+- Celery sebagai Task Queue
+- Redis sebagai Result Backend
+- Flower untuk monitoring task
+
+Service yang berjalan:
+
+- web
+- db
+- redis
+- mongodb
+- rabbitmq
+- celery_worker
+- celery_beat
+- flower
+
+## Generate Course Report
+
+Generate report secara asynchronous menggunakan Celery.
+
+### Generate Report
+
+POST
+
+/api/v1/reports/generate/{course_id}
+
+Response:
+
+{
+  "task_id": "296daed6-1854-47d7-b454-c564ab26f30a",
+  "status": "processing",
+  "course": "IPSSS"
+}
+
+### Check Report Status
+
+GET
+
+/api/v1/reports/status/{task_id}
+
+Response:
+
+{
+  "task_id": "296daed6-1854-47d7-b454-c564ab26f30a",
+  "status": "SUCCESS",
+  "result": {
+    "course_id": 4,
+    "course_name": "IPSSS",
+    "price": 6,
+    "teacher": "nandika"
+  }
+}
+
+## Docker Services
+
+| Service | Port |
+|----------|--------|
+| Django | 8000 |
+| PostgreSQL | 5432 |
+| Redis | 6379 |
+| MongoDB | 27017 |
+| RabbitMQ | 5672 |
+| RabbitMQ Management | 15672 |
+| Flower | 5555 |
+
+## Verification
+
+### MongoDB Logging
+
+1. Create / Update / Delete Course
+2. Open MongoDB shell
+3. Check analytics_logs collection
+
+### Celery Async Task
+
+1. Generate report:
+POST /api/v1/reports/generate/{course_id}
+
+2. Copy task_id
+
+3. Check status:
+GET /api/v1/reports/status/{task_id}
+
+4. Status SUCCESS menandakan task berhasil diproses oleh Celery Worker.
+
 # Learning Chapters Implemented
 
 * Chapter 1 – Backend Development Introduction
@@ -265,6 +394,7 @@ POSTGRES_PORT=5432
 * Chapter 8 – Advanced API Features
 * Chapter 10 – Redis
 * Chapter 11 – MongoDB
+* Chapter 12 – Message Brokers & Async Tasks (RabbitMQ + Celery)
 
 ---
 

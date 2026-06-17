@@ -167,3 +167,19 @@ MONGO_URI = os.getenv(
 )
 
 MONGO_DB_NAME = "lms_analytics"
+
+CELERY_BROKER_URL = (
+    "amqp://admin:password123@rabbitmq:5672//"
+)
+
+CELERY_RESULT_BACKEND = (
+    "redis://redis:6379/2"
+)
+
+CELERY_ACCEPT_CONTENT = ["json"]
+
+CELERY_TASK_SERIALIZER = "json"
+
+CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_TIMEZONE = "Asia/Jakarta"

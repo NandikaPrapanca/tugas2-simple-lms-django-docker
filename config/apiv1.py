@@ -6,9 +6,7 @@ from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from analytics.logger import log_activity
-
 from typing import List, Optional
-
 from lms.models import Course
 from lms.schemas import (
     CourseIn,
@@ -16,9 +14,7 @@ from lms.schemas import (
     RegisterSchema,
     UserOut,
 )
-
 from lms.helpers import get_object_or_404
-
 from ninja import (
     Schema,
     File,
@@ -27,8 +23,12 @@ from ninja import (
     FilterSchema,
     Field
 )
-
 from ninja.pagination import paginate, PageNumberPagination
+from analytics.tasks import (
+    generate_course_report,
+    cleanup_logs,
+)
+from celery.result import AsyncResult
 
 User = get_user_model()
 
@@ -328,3 +328,45 @@ def delete_course(request, id: int):
     cache.delete(f"course_detail:{id}")
 
     return 204, None
+
+@api.post(
+    "/reports/generate/{course_id}",
+    auth=apiAuth,
+    tags=["Reports"]
+)
+def generate_report(request, course_id: int):
+
+    course = get_object_or_404(
+        Course,
+        pk=course_id
+    )
+
+    task = generate_course_report.delay(
+        course.id
+    )
+
+    return {
+        "task_id": task.id,
+        "status": "processing",
+        "course": course.name
+    }
+
+
+@api.get(
+    "/reports/status/{task_id}",
+    auth=apiAuth,
+    tags=["Reports"]
+)
+def report_status(request, task_id: str):
+
+    result = AsyncResult(task_id)
+
+    response = {
+        "task_id": task_id,
+        "status": result.status,
+    }
+
+    if result.ready():
+        response["result"] = result.result
+
+    return response

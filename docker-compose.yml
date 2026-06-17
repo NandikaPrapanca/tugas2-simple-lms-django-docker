@@ -47,6 +47,50 @@ services:
     volumes:
     - mongo_data:/data/db
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+    - "5672:5672"
+    - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password123
+
+  celery_worker:
+    build: .
+    command: celery -A config worker -l info
+    volumes:
+    - .:/app
+    env_file:
+    - .env.example
+    depends_on:
+    - rabbitmq
+    - redis
+    - db
+
+  celery_beat:
+    build: .
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    env_file:
+      - .env.example
+    depends_on:
+      - rabbitmq
+      - redis
+      - db
+
+  flower:
+    build: .
+    command: celery -A config flower --port=5555
+    env_file:
+      - .env.example
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery_worker
+      
 volumes:
   postgres_data:
   redis_data:
