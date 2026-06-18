@@ -171,10 +171,17 @@ def detail_course(request, id: int):
 )
 def create_course(request, data: CourseIn):
 
+    user = User.objects.get(id=request.user.id)
+
+    # --- PENEMPATAN DI SINI ---
+    if user.role != "teacher" and not user.is_superuser:
+        raise HttpError(
+            403,
+            "Hanya teacher yang dapat membuat course"
+        )
+    
     if data.price < 0:
         raise HttpError(400, "Harga tidak boleh negatif")
-
-    user = User.objects.get(id=request.user.id)
 
     course = Course.objects.create(
         name=data.name,
@@ -276,6 +283,12 @@ def upload_course_image(
 
     user = User.objects.get(id=request.user.id)
 
+    if user.role != "teacher" and not user.is_superuser:
+        raise HttpError(
+            403,
+            "Hanya teacher yang dapat upload image"
+        )
+    
     if course.teacher != user:
         raise HttpError(403, "Bukan pemilik course")
 
@@ -336,6 +349,14 @@ def delete_course(request, id: int):
 )
 def generate_report(request, course_id: int):
 
+    user = User.objects.get(id=request.user.id)
+
+    if user.role != "teacher" and not user.is_superuser:
+        raise HttpError(
+            403,
+            "Hanya teacher yang dapat generate report"
+        )
+    
     course = get_object_or_404(
         Course,
         pk=course_id
