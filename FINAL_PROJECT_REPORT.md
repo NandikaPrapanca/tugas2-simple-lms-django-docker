@@ -243,6 +243,7 @@ Lampirkan screenshot berikut:
 
 * CRUD Course
 ![Create](screenshot/create-course.png)
+![Read](screenshot/list-courses.png)
 ![Delete](screenshot/delete-course.png)
 ![Update](screenshot/update-course.png)
 
