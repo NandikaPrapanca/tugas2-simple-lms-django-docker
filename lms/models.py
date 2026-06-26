@@ -120,3 +120,25 @@ class Progress(models.Model):
         on_delete=models.CASCADE
     )
     completed = models.BooleanField(default=False)
+
+# =========================
+# Announcement
+# =========================
+class Announcement(models.Model):
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name="announcements"
+    )
+
+    title = models.CharField(max_length=200)
+
+    content = models.TextField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.course.name} - {self.title}"

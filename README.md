@@ -17,6 +17,12 @@ Simple LMS adalah aplikasi Learning Management System (LMS) sederhana yang diban
 - Asynchronous Course Report Generation
 - Flower Monitoring
 
+## New Features (Final Project)
+Course Announcement System (10)
+Student Dashboard (12) 
+Instructor Dashboard (12)
+Response Dan Error Format Konsisten (10)
+
 ### Authentication & Authorization
 
 * User Registration
@@ -397,6 +403,91 @@ GET /api/v1/reports/status/{task_id}
 * Chapter 12 – Message Brokers & Async Tasks (RabbitMQ + Celery)
 
 ---
+
+## Final Project
+1. Course Announcement System (10)
+
+Teacher dapat membuat announcement untuk setiap course yang dimiliki.
+
+Features
+Create Announcement
+List Announcement
+Ownership Validation
+Teacher Permission
+Endpoints
+
+Create Announcement
+
+POST /api/v1/courses/{course_id}/announcements/
+
+List Announcement
+
+GET /api/v1/courses/{course_id}/announcements/
+
+2. Student Dashboard (12)
+
+Dashboard khusus student untuk melihat ringkasan aktivitas belajar.
+
+Endpoint
+GET /api/v1/student/dashboard/
+Response
+{
+    "success": true,
+    "message": "Dashboard berhasil diambil",
+    "data": {
+        "username": "student",
+        "total_courses": 6,
+        "enrolled_courses": 1,
+        "completed_courses": 0,
+        "ongoing_courses": 1
+    }
+}
+
+3. Instructor Dashboard (12)
+
+Dashboard khusus teacher untuk melihat statistik course.
+
+Endpoint
+GET /api/v1/teacher/dashboard/
+Response
+{
+    "success": true,
+    "message": "Dashboard berhasil diambil",
+    "data": {
+        "username": "teacher",
+        "total_courses": 2,
+        "total_students": 1,
+        "total_announcements": 3
+    }
+}
+
+4. Response Dan Error Format Konsisten (10)
+
+Seluruh endpoint menggunakan response format yang konsisten sehingga memudahkan integrasi dengan frontend.
+
+Success Response
+{
+    "success": true,
+    "message": "Request berhasil",
+    "data": {}
+}
+Error Response
+{
+    "success": false,
+    "message": "Resource tidak ditemukan",
+    "errors": {}
+}
+
+# Final Project Features & Assessment
+
+| Feature                            | Description                                                           |  Point |
+| ---------------------------------- | --------------------------------------------------------------------- | -----: |
+| Course Announcement System         | Teacher dapat membuat dan mengelola announcement pada course miliknya | **10** |
+| Student Dashboard                  | Menampilkan statistik pembelajaran student                            | **12** |
+| Teacher Dashboard                  | Menampilkan statistik course, student, dan announcement               | **12** |
+| Consistent Response & Error Format | Format response API yang seragam untuk seluruh endpoint               | **10** |
+
+**Total poin tambahan yang telah diimplementasikan: 44 poin**
 
 # Author
 

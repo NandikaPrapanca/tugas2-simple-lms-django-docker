@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import User, Category, Course, Lesson, Enrollment, Progress
-
+from .models import User, Category, Course, Lesson, Enrollment, Progress, Announcement
 
 # =========================
 # LESSON INLINE (PENTING)
@@ -56,3 +55,5 @@ class EnrollmentAdmin(admin.ModelAdmin):
 class ProgressAdmin(admin.ModelAdmin):
     list_display = ('enrollment', 'lesson', 'completed')
     list_filter = ('completed',)
+
+admin.site.register(Announcement)

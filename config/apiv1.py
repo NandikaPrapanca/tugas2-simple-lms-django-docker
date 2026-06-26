@@ -7,14 +7,19 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from analytics.logger import log_activity
 from typing import List, Optional
-from lms.models import Course
+from lms.models import Course, Announcement, Enrollment, Progress, Lesson
 from lms.schemas import (
     CourseIn,
     CourseOut,
     RegisterSchema,
     UserOut,
+    AnnouncementCreateSchema,
+    AnnouncementResponseSchema,
+    StudentDashboardSchema,
+    InstructorDashboardSchema,
+    ApiResponseSchema
 )
-from lms.helpers import get_object_or_404
+from lms.helpers import get_object_or_404, success_response, error_response
 from ninja import (
     Schema,
     File,
@@ -106,10 +111,12 @@ def list_courses(
     ordering: str = "-created_at",
 ):
 
-    cache_key = "courses_list"
+    user = User.objects.get(id=request.user.id)
+
+    # Cache berbeda untuk setiap user
+    cache_key = f"courses_list_{user.id}_{user.role}_{ordering}"
 
     cached_data = cache.get(cache_key)
-
     if cached_data:
         return cached_data
 
@@ -125,10 +132,22 @@ def list_courses(
     if ordering not in allowed_fields:
         ordering = "-created_at"
 
-    qs = Course.objects.select_related("teacher").all()
+    # ==========================
+    # Permission & Ownership
+    # ==========================
+
+    if user.is_superuser:
+        qs = Course.objects.select_related("teacher").all()
+
+    elif user.role == "teacher":
+        qs = Course.objects.select_related("teacher").filter(
+            teacher=user
+        )
+
+    else:  # student
+        qs = Course.objects.select_related("teacher").all()
 
     qs = filters.filter(qs)
-
     qs = qs.order_by(ordering)
 
     data = list(qs)
@@ -137,6 +156,47 @@ def list_courses(
 
     return data
 
+@api.post(
+    "/courses/{course_id}/enroll/",
+    auth=apiAuth,
+    tags=["Enrollment"]
+)
+def enroll_course(request, course_id: int):
+
+    user = User.objects.get(id=request.user.id)
+
+    # hanya student
+    if user.role != "student":
+        raise HttpError(
+            403,
+            "Hanya student yang dapat enroll course"
+        )
+
+    course = get_object_or_404(
+        Course,
+        pk=course_id
+    )
+
+    # cek sudah enroll atau belum
+    if Enrollment.objects.filter(
+        student=user,
+        course=course
+    ).exists():
+
+        raise HttpError(
+            400,
+            "Anda sudah enroll pada course ini"
+        )
+
+    Enrollment.objects.create(
+        student=user,
+        course=course
+    )
+
+    return {
+        "message": "Enroll berhasil",
+        "course": course.name
+    }
 
 @api.get(
     "/courses/{id}",
@@ -198,7 +258,7 @@ def create_course(request, data: CourseIn):
     }
 )
 
-    cache.delete("courses_list")
+    cache.clear()
 
     return 201, course
 
@@ -231,7 +291,7 @@ def update_course(request, id: int, data: CourseIn):
         "course_name": course.name
     }
 )
-    cache.delete("courses_list")
+    cache.clear()
     cache.delete(f"course_detail:{id}")
 
     return course
@@ -258,12 +318,12 @@ def patch_course(request, id: int, data: CourseUpdate):
 
     course.save()
 
-    cache.delete("courses_list")
+    cache.clear()
     cache.delete(f"course_detail:{id}")
 
-    return {
-        "message": "Course berhasil diupdate"
-    }
+    return success_response(
+    "Course berhasil diupdate"
+    )
 
 
 # ================= UPLOAD IMAGE =================
@@ -307,10 +367,12 @@ def upload_course_image(
     course.image = file
     course.save()
 
-    return {
-        "message": "Image uploaded",
+    return success_response(
+    "Image berhasil diupload",
+    {
         "filename": file.name
     }
+    )
 
 
 @api.delete(
@@ -337,7 +399,7 @@ def delete_course(request, id: int):
 )
     course.delete()
 
-    cache.delete("courses_list")
+    cache.clear()
     cache.delete(f"course_detail:{id}")
 
     return 204, None
@@ -391,3 +453,150 @@ def report_status(request, task_id: str):
         response["result"] = result.result
 
     return response
+
+
+@api.post(
+    "/courses/{course_id}/announcements/",
+    auth=apiAuth,
+    response=ApiResponseSchema,
+    tags=["Announcements"]
+)
+def create_announcement(
+    request,
+    course_id: int,
+    data: AnnouncementCreateSchema
+):
+    user = User.objects.get(id=request.user.id)
+
+    if user.role != "teacher" and not user.is_superuser:
+        raise HttpError(
+            403,
+            "Hanya teacher yang dapat membuat announcement"
+        )
+
+    course = get_object_or_404(
+        Course,
+        pk=course_id
+    )
+
+    if course.teacher != user and not user.is_superuser:
+        raise HttpError(
+            403,
+            "Bukan pemilik course"
+        )
+
+    announcement = Announcement.objects.create(
+        course=course,
+        title=data.title,
+        content=data.content,
+    )
+
+    return success_response(
+    "Announcement berhasil dibuat",
+    AnnouncementResponseSchema.from_orm(
+        announcement
+    ).dict()
+)
+
+@api.get(
+    "/courses/{course_id}/announcements/",
+    auth=apiAuth,
+    response=ApiResponseSchema,
+    tags=["Announcements"]
+)
+def list_announcements(request, course_id: int):
+
+    course = get_object_or_404(
+        Course,
+        pk=course_id
+    )
+
+    announcements = Announcement.objects.filter(
+    course=course
+    ).order_by("-created_at")
+
+    data = [
+        AnnouncementResponseSchema.from_orm(a).dict()
+        for a in announcements
+    ]
+
+    return success_response(
+        "Daftar announcement berhasil diambil",
+        data
+    )
+
+@api.get(
+    "/student/dashboard/",
+    auth=apiAuth,
+    tags=["Student"]
+)
+def student_dashboard(request):
+
+    user = User.objects.get(id=request.user.id)
+
+    if user.role != "student":
+        raise HttpError(403, "Hanya student yang dapat mengakses dashboard")
+
+    total_courses = Course.objects.count()
+
+    enrolled_courses = Enrollment.objects.filter(
+        student=user
+    ).count()
+
+    completed_courses = Enrollment.objects.filter(
+        student=user,
+        progress__completed=True
+    ).distinct().count()
+
+    ongoing_courses = enrolled_courses - completed_courses
+
+    return success_response(
+        "Dashboard berhasil diambil",
+        {
+            "username": user.username,
+            "total_courses": total_courses,
+            "enrolled_courses": enrolled_courses,
+            "completed_courses": completed_courses,
+            "ongoing_courses": ongoing_courses,
+        }
+    )
+
+@api.get(
+    "/teacher/dashboard/",
+    auth=apiAuth,
+    response=ApiResponseSchema,
+    tags=["Dashboard"]
+)
+def teacher_dashboard(request):
+
+    user = User.objects.get(id=request.user.id)
+
+    if user.role != "teacher" and not user.is_superuser:
+        raise HttpError(
+            403,
+            "Hanya teacher yang dapat mengakses dashboard"
+        )
+
+    courses = Course.objects.filter(
+        teacher=user
+    )
+
+    total_courses = courses.count()
+
+    total_students = Enrollment.objects.filter(
+        course__teacher=user
+    ).count()
+
+    total_announcements = Announcement.objects.filter(
+        course__teacher=user
+    ).count()
+
+    return success_response(
+    "Dashboard berhasil diambil",
+    {
+        "username": user.username,
+        "total_courses": total_courses,
+        "total_students": total_students,
+        "total_announcements": total_announcements,
+    }
+    )
