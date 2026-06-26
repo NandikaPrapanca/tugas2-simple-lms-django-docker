@@ -233,12 +233,11 @@ def create_course(request, data: CourseIn):
 
     user = User.objects.get(id=request.user.id)
 
-    # --- PENEMPATAN DI SINI ---
-    if user.role != "teacher" and not user.is_superuser:
-        raise HttpError(
-            403,
-            "Hanya teacher yang dapat membuat course"
-        )
+    if user.role != "teacher":
+        return error_response(
+            "Hanya teacher yang dapat membuat course",
+            status=403
+    )
     
     if data.price < 0:
         raise HttpError(400, "Harga tidak boleh negatif")

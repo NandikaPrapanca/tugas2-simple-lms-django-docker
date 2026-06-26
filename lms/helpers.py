@@ -1,5 +1,26 @@
 from ninja.errors import HttpError
+from django.http import JsonResponse
 
+def success_response(message, data=None, status=200):
+    return JsonResponse(
+        {
+            "success": True,
+            "message": message,
+            "data": data or {}
+        },
+        status=status
+    )
+
+
+def error_response(message, status=400, errors=None):
+    return JsonResponse(
+        {
+            "success": False,
+            "message": message,
+            "errors": errors or {}
+        },
+        status=status
+    )
 
 def get_object_or_404(model, **kwargs):
     """
@@ -23,9 +44,3 @@ def success_response(message, data=None):
         "data": data,
     }
 
-
-def error_response(message):
-    return {
-        "success": False,
-        "message": message,
-    }
